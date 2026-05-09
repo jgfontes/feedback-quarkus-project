@@ -20,10 +20,19 @@ public class FeedbackServiceImpl extends AbstractFeedbackService {
     }
 
     public void add(Feedback feedback) {
-        Long id = Objects.requireNonNull(feedback.getId(), "id is required");
+        Long id = nextId();
         String description = Objects.requireNonNull(feedback.getDescription(), "description is required");
         Integer grade = Objects.requireNonNull(feedback.getGrade(), "grade is required");
         dynamoDb.putItem(putItemRequest(id, description, grade));
+    }
+
+    private Long nextId() {
+        return dynamoDb.scanPaginator(scanRequest()).items().stream()
+                .map(Feedback::from)
+                .map(Feedback::getId)
+                .filter(Objects::nonNull)
+                .max(Long::compareTo)
+                .orElse(0L) + 1;
     }
 
     public Feedback findById(Long id) {
