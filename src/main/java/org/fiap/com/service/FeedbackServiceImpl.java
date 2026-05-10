@@ -19,11 +19,12 @@ public class FeedbackServiceImpl extends AbstractFeedbackService {
     DynamoDbClient dynamoDb;
 
     public List<Feedback> findAll() {
-        return dynamoDb.scanPaginator(scanRequest()).items().stream()
-                .map(Feedback::from).toList();
+        System.out.println(scanRequest());
+        return dynamoDb.scanPaginator(scanRequest()).items().stream().map(Feedback::from).toList();
     }
 
     public Feedback add(Feedback feedback) {
+        System.out.println("Adding feedback: " + feedback);
         Long id = nextId();
         String description = Objects.requireNonNull(feedback.getDescription(), "description is required");
         Integer grade = Objects.requireNonNull(feedback.getGrade(), "grade is required");
@@ -51,9 +52,11 @@ public class FeedbackServiceImpl extends AbstractFeedbackService {
 
             return response(405, "Method Not Allowed");
         } catch (IllegalArgumentException e) {
+            e.printStackTrace();
             return response(400, e.getMessage());
         } catch (Exception e) {
-            return response(500, "Internal Server Error");
+            e.printStackTrace();
+            return response(500, e.getMessage());
         }
     }
 
@@ -67,6 +70,7 @@ public class FeedbackServiceImpl extends AbstractFeedbackService {
     }
 
     public Feedback findById(Long id) {
+        System.out.println("Finding feedback with id: " + id);
         return Feedback.from(dynamoDb.getItem(getRequest(id)).item());
     }
 
