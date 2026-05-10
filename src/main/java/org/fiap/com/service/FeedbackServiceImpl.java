@@ -11,6 +11,7 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 @ApplicationScoped
 public class FeedbackServiceImpl extends AbstractFeedbackService {
@@ -25,7 +26,7 @@ public class FeedbackServiceImpl extends AbstractFeedbackService {
 
     public Feedback add(Feedback feedback) {
         System.out.println("Adding feedback: " + feedback);
-        Long id = nextId();
+        String id = UUID.randomUUID().toString();
         String description = Objects.requireNonNull(feedback.getDescription(), "description is required");
         Integer grade = Objects.requireNonNull(feedback.getGrade(), "grade is required");
         dynamoDb.putItem(putItemRequest(id, description, grade));
@@ -45,7 +46,7 @@ public class FeedbackServiceImpl extends AbstractFeedbackService {
             if ("GET".equalsIgnoreCase(method)) {
                 String id = pathParamId(eventRequest);
                 if (id != null) {
-                    return response(200, FeedbackMapperUtil.toJson(findById(Long.parseLong(id))));
+                    return response(200, FeedbackMapperUtil.toJson(findById(id)));
                 }
                 return response(200, FeedbackMapperUtil.toJson(findAll()));
             }
@@ -60,16 +61,7 @@ public class FeedbackServiceImpl extends AbstractFeedbackService {
         }
     }
 
-    private Long nextId() {
-        return dynamoDb.scanPaginator(scanRequest()).items().stream()
-                .map(Feedback::from)
-                .map(Feedback::getId)
-                .filter(Objects::nonNull)
-                .max(Long::compareTo)
-                .orElse(0L) + 1;
-    }
-
-    public Feedback findById(Long id) {
+    public Feedback findById(String id) {
         System.out.println("Finding feedback with id: " + id);
         return Feedback.from(dynamoDb.getItem(getRequest(id)).item());
     }

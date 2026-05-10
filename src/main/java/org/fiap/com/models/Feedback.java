@@ -8,7 +8,7 @@ import java.util.Map;
 @RegisterForReflection
 public class Feedback {
 
-    private Long id;
+    private String id;
     private String description;
     private Integer grade;
 
@@ -18,7 +18,7 @@ public class Feedback {
     public static Feedback from(Map<String, AttributeValue> item) {
         Feedback feedback = new Feedback();
         if (item.containsKey("id")) {
-            feedback.setId(Long.parseLong(item.get("id").n()));
+            feedback.setId(item.get("id").s());
         }
         if (item.containsKey("description")) {
             feedback.setDescription(item.get("description").s());
@@ -29,11 +29,11 @@ public class Feedback {
         return feedback;
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
