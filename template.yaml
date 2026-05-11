@@ -1,0 +1,222 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Plataforma de Feedback - Tech Challenge Fase 4 FIAP
+
+Parameters:
+  AdminEmail:
+    Type: String
+    Description: Email do administrador para notificações
+  SenderEmail:
+    Type: String
+    Description: Email verificado no SES para envio
+
+Globals:
+  Function:
+    Runtime: java21
+    MemorySize: 512
+    Timeout: 30
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        ADMIN_EMAIL: !Ref AdminEmail
+        SENDER_EMAIL: !Ref SenderEmail
+        FEEDBACK_TABLE_NAME: !Ref FeedbackTable
+
+Resources:
+
+  # ==================== DynamoDB ====================
+  FeedbackTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: feedback_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: feedback_id
+          KeyType: HASH
+
+  # ==================== DLQ ====================
+  FeedbackDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+
+  # ==================== Lambda: feedback-create ====================
+  FeedbackCreateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
+      CodeUri: target/function.zip
+      Environment:
+        Variables:
+          QUARKUS_LAMBDA_HANDLER: feedback
+      DeadLetterQueue:
+        Type: SQS
+        TargetArn: !GetAtt FeedbackDLQ.Arn
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FeedbackTable
+        - EventBridgePutEventsPolicy:
+            EventBusName: default
+      Events:
+        PostFeedback:
+          Type: Api
+          Properties:
+            Path: /feedback
+            Method: POST
+        GetAllFeedback:
+          Type: Api
+          Properties:
+            Path: /feedback
+            Method: GET
+        GetFeedbackById:
+          Type: Api
+          Properties:
+            Path: /feedback/{id}
+            Method: GET
+
+  # ==================== Lambda: feedback-notify ====================
+  FeedbackNotifyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
+      CodeUri: target/function.zip
+      Environment:
+        Variables:
+          QUARKUS_LAMBDA_HANDLER: feedbackNotify
+      DeadLetterQueue:
+        Type: SQS
+        TargetArn: !GetAtt FeedbackDLQ.Arn
+      Policies:
+        - SESCrudPolicy:
+            IdentityName: !Ref SenderEmail
+      Events:
+        CriticalFeedback:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              source:
+                - feedback.platform
+              detail-type:
+                - FeedbackCritical
+
+  # ==================== Lambda: feedback-weekly-report ====================
+  FeedbackWeeklyReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
+      CodeUri: target/function.zip
+      Environment:
+        Variables:
+          QUARKUS_LAMBDA_HANDLER: feedbackWeeklyReport
+      DeadLetterQueue:
+        Type: SQS
+        TargetArn: !GetAtt FeedbackDLQ.Arn
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref FeedbackTable
+        - SESCrudPolicy:
+            IdentityName: !Ref SenderEmail
+      Events:
+        WeeklySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(7 days)
+            Description: Dispara relatório semanal de feedbacks
+            Enabled: true
+
+  # ==================== Monitoramento ====================
+  FeedbackCreateErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Erros na Lambda feedback-create
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref FeedbackCreateFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  FeedbackNotifyErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Erros na Lambda feedback-notify
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref FeedbackNotifyFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  FeedbackReportErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Erros na Lambda feedback-weekly-report
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref FeedbackWeeklyReportFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  DLQMessagesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Dead Letter Queue contém mensagens não processadas
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt FeedbackDLQ.QueueName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  FeedbackCreateLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${FeedbackCreateFunction}"
+      RetentionInDays: 14
+
+  FeedbackNotifyLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${FeedbackNotifyFunction}"
+      RetentionInDays: 14
+
+  FeedbackReportLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${FeedbackWeeklyReportFunction}"
+      RetentionInDays: 14
+
+Outputs:
+  FeedbackApiUrl:
+    Description: URL da API de Feedback
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/feedback"
+  FeedbackTableName:
+    Description: Nome da tabela DynamoDB
+    Value: !Ref FeedbackTable
+  DLQUrl:
+    Description: URL da Dead Letter Queue
+    Value: !Ref FeedbackDLQ

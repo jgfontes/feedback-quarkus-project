@@ -9,7 +9,8 @@ import java.util.Map;
 
 public abstract class AbstractFeedbackService {
 
-    public static final String FEEDBACK_TABLE_NAME = "feedback";
+    public static final String FEEDBACK_TABLE_NAME = System.getenv("FEEDBACK_TABLE_NAME") != null
+            ? System.getenv("FEEDBACK_TABLE_NAME") : "feedback";
     public static final String FEEDBACK_ID_COL = "feedback_id";
     public static final String FEEDBACK_DESCRIPTION_COL = "description";
     public static final String FEEDBACK_GRADE_COL = "grade";
