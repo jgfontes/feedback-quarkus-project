@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: org.fiap.com.service.FeedbackServiceImplTest
 -------------------------------------------------------------------------------
-Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.645 s -- in org.fiap.com.service.FeedbackServiceImplTest
+Tests run: 13, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.666 s -- in org.fiap.com.service.FeedbackServiceImplTest

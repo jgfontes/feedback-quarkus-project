@@ -8,6 +8,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.PutItemResponse;
+import software.amazon.awssdk.services.eventbridge.EventBridgeClient;
+import software.amazon.awssdk.services.eventbridge.model.PutEventsRequest;
+import software.amazon.awssdk.services.eventbridge.model.PutEventsResponse;
 
 import java.lang.reflect.Field;
 
@@ -19,15 +22,24 @@ class FeedbackServiceImplTest {
 
     private FeedbackServiceImpl service;
     private DynamoDbClient dynamoDbMock;
+    private EventBridgeClient eventBridgeMock;
 
     @BeforeEach
     void setUp() throws Exception {
         service = new FeedbackServiceImpl();
         dynamoDbMock = mock(DynamoDbClient.class);
+        eventBridgeMock = mock(EventBridgeClient.class);
         when(dynamoDbMock.putItem(any(PutItemRequest.class))).thenReturn(PutItemResponse.builder().build());
-        Field field = FeedbackServiceImpl.class.getDeclaredField("dynamoDb");
+        when(eventBridgeMock.putEvents(any(PutEventsRequest.class))).thenReturn(PutEventsResponse.builder().build());
+
+        setField("dynamoDb", dynamoDbMock);
+        setField("eventBridge", eventBridgeMock);
+    }
+
+    private void setField(String name, Object value) throws Exception {
+        Field field = FeedbackServiceImpl.class.getDeclaredField(name);
         field.setAccessible(true);
-        field.set(service, dynamoDbMock);
+        field.set(service, value);
     }
 
     @Test
@@ -41,6 +53,28 @@ class FeedbackServiceImplTest {
         assertNotNull(result.getId());
         assertNotNull(result.getCreatedAt());
         verify(dynamoDbMock).putItem(any(PutItemRequest.class));
+    }
+
+    @Test
+    void devePublicarEventoQuandoGradeMenorQue6() {
+        Feedback feedback = new Feedback();
+        feedback.setDescription("Aula confusa");
+        feedback.setGrade(3);
+
+        service.add(feedback);
+
+        verify(eventBridgeMock).putEvents(any(PutEventsRequest.class));
+    }
+
+    @Test
+    void naoDevePublicarEventoQuandoGradeMaiorOuIgual6() {
+        Feedback feedback = new Feedback();
+        feedback.setDescription("Aula boa");
+        feedback.setGrade(7);
+
+        service.add(feedback);
+
+        verify(eventBridgeMock, never()).putEvents(any(PutEventsRequest.class));
     }
 
     @Test

@@ -1,2 +1,5 @@
-org/fiap/com/service/FeedbackServiceImplTest.class
+org/fiap/com/service/FeedbackWeeklyReportLambdaTest.class
+org/fiap/com/service/FeedbackNotifyLambdaTest.class
 org/fiap/com/models/FeedbackTest.class
+org/fiap/com/service/TestSdkIterable.class
+org/fiap/com/service/FeedbackServiceImplTest.class

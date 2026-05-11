@@ -7,6 +7,9 @@ import jakarta.inject.Inject;
 import org.fiap.com.FeedbackMapperUtil;
 import org.fiap.com.models.Feedback;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.eventbridge.EventBridgeClient;
+import software.amazon.awssdk.services.eventbridge.model.PutEventsRequest;
+import software.amazon.awssdk.services.eventbridge.model.PutEventsRequestEntry;
 
 import java.time.Instant;
 import java.util.List;
@@ -20,13 +23,14 @@ public class FeedbackServiceImpl extends AbstractFeedbackService {
     @Inject
     DynamoDbClient dynamoDb;
 
+    @Inject
+    EventBridgeClient eventBridge;
+
     public List<Feedback> findAll() {
-        System.out.println(scanRequest());
         return dynamoDb.scanPaginator(scanRequest()).items().stream().map(Feedback::from).toList();
     }
 
     public Feedback add(Feedback feedback) {
-        System.out.println("Adding feedback: " + feedback);
         String description = Objects.requireNonNull(feedback.getDescription(), "description is required");
         if (description.isBlank() || description.length() < 3) {
             throw new IllegalArgumentException("description must have at least 3 characters");
@@ -40,7 +44,27 @@ public class FeedbackServiceImpl extends AbstractFeedbackService {
         dynamoDb.putItem(putItemRequest(id, description, grade, createdAt));
         feedback.setId(id);
         feedback.setCreatedAt(createdAt);
+
+        if (grade < 6) {
+            publishCriticalEvent(feedback);
+        }
+
         return feedback;
+    }
+
+    private void publishCriticalEvent(Feedback feedback) {
+        String detail = String.format(
+                "{\"eventId\":\"%s\",\"feedbackId\":\"%s\",\"description\":\"%s\",\"grade\":%d,\"urgency\":\"%s\",\"createdAt\":\"%s\"}",
+                UUID.randomUUID(), feedback.getId(), feedback.getDescription(),
+                feedback.getGrade(), feedback.getUrgency(), feedback.getCreatedAt());
+
+        PutEventsRequestEntry entry = PutEventsRequestEntry.builder()
+                .source("feedback.platform")
+                .detailType("FeedbackCritical")
+                .detail(detail)
+                .build();
+
+        eventBridge.putEvents(PutEventsRequest.builder().entries(entry).build());
     }
 
     public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent eventRequest) {
@@ -62,16 +86,13 @@ public class FeedbackServiceImpl extends AbstractFeedbackService {
 
             return response(405, "Method Not Allowed");
         } catch (IllegalArgumentException e) {
-            e.printStackTrace();
             return response(400, e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
             return response(500, e.getMessage());
         }
     }
 
     public Feedback findById(String id) {
-        System.out.println("Finding feedback with id: " + id);
         return Feedback.from(dynamoDb.getItem(getRequest(id)).item());
     }
 
