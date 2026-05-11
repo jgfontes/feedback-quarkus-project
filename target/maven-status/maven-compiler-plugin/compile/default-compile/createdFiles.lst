@@ -1,0 +1,5 @@
+org/fiap/com/service/FeedbackLambda.class
+org/fiap/com/FeedbackMapperUtil.class
+org/fiap/com/service/AbstractFeedbackService.class
+org/fiap/com/models/Feedback.class
+org/fiap/com/service/FeedbackServiceImpl.class
