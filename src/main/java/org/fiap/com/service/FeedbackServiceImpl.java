@@ -8,6 +8,7 @@ import org.fiap.com.FeedbackMapperUtil;
 import org.fiap.com.models.Feedback;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -26,11 +27,19 @@ public class FeedbackServiceImpl extends AbstractFeedbackService {
 
     public Feedback add(Feedback feedback) {
         System.out.println("Adding feedback: " + feedback);
-        String id = UUID.randomUUID().toString();
         String description = Objects.requireNonNull(feedback.getDescription(), "description is required");
+        if (description.isBlank() || description.length() < 3) {
+            throw new IllegalArgumentException("description must have at least 3 characters");
+        }
         Integer grade = Objects.requireNonNull(feedback.getGrade(), "grade is required");
-        dynamoDb.putItem(putItemRequest(id, description, grade));
+        if (grade < 0 || grade > 10) {
+            throw new IllegalArgumentException("grade must be between 0 and 10");
+        }
+        String id = UUID.randomUUID().toString();
+        String createdAt = Instant.now().toString();
+        dynamoDb.putItem(putItemRequest(id, description, grade, createdAt));
         feedback.setId(id);
+        feedback.setCreatedAt(createdAt);
         return feedback;
     }
 
