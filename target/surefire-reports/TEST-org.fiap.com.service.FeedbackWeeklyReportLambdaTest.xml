@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="org.fiap.com.service.FeedbackServiceImplTest" time="0.666" tests="13" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="org.fiap.com.service.FeedbackWeeklyReportLambdaTest" time="0.124" tests="2" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="21"/>
     <property name="sun.jnu.encoding" value="UTF-8"/>
@@ -59,17 +59,6 @@
     <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
     <property name="java.class.version" value="65.0"/>
   </properties>
-  <testcase name="devePublicarEventoQuandoGradeMenorQue6" classname="org.fiap.com.service.FeedbackServiceImplTest" time="0.488"/>
-  <testcase name="deveFalharQuandoDescriptionNula" classname="org.fiap.com.service.FeedbackServiceImplTest" time="0.007"/>
-  <testcase name="deveAceitarGradesDentroDoRange(int)[1]" classname="org.fiap.com.service.FeedbackServiceImplTest" time="0.021"/>
-  <testcase name="deveAceitarGradesDentroDoRange(int)[2]" classname="org.fiap.com.service.FeedbackServiceImplTest" time="0.004"/>
-  <testcase name="deveAceitarGradesDentroDoRange(int)[3]" classname="org.fiap.com.service.FeedbackServiceImplTest" time="0.004"/>
-  <testcase name="deveFalharQuandoGradeNula" classname="org.fiap.com.service.FeedbackServiceImplTest" time="0.004"/>
-  <testcase name="deveFalharQuandoDescriptionCurta" classname="org.fiap.com.service.FeedbackServiceImplTest" time="0.006"/>
-  <testcase name="naoDevePublicarEventoQuandoGradeMaiorOuIgual6" classname="org.fiap.com.service.FeedbackServiceImplTest" time="0.011"/>
-  <testcase name="deveAdicionarFeedbackValido" classname="org.fiap.com.service.FeedbackServiceImplTest" time="0.006"/>
-  <testcase name="deveFalharQuandoGradeForaDoRange(int)[1]" classname="org.fiap.com.service.FeedbackServiceImplTest" time="0.003"/>
-  <testcase name="deveFalharQuandoGradeForaDoRange(int)[2]" classname="org.fiap.com.service.FeedbackServiceImplTest" time="0.003"/>
-  <testcase name="deveFalharQuandoGradeForaDoRange(int)[3]" classname="org.fiap.com.service.FeedbackServiceImplTest" time="0.005"/>
-  <testcase name="deveFalharQuandoGradeForaDoRange(int)[4]" classname="org.fiap.com.service.FeedbackServiceImplTest" time="0.004"/>
+  <testcase name="deveRetornarNoDataQuandoNaoExistemFeedbacks" classname="org.fiap.com.service.FeedbackWeeklyReportLambdaTest" time="0.094"/>
+  <testcase name="deveEnviarRelatorioQuandoExistemFeedbacks" classname="org.fiap.com.service.FeedbackWeeklyReportLambdaTest" time="0.021"/>
 </testsuite>
