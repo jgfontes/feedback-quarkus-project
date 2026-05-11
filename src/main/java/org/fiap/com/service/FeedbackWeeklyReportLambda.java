@@ -36,10 +36,12 @@ public class FeedbackWeeklyReportLambda implements RequestHandler<ScheduledEvent
 
     @Override
     public String handleRequest(ScheduledEvent event, Context context) {
+        String tableName = System.getenv("FEEDBACK_TABLE_NAME") != null
+                ? System.getenv("FEEDBACK_TABLE_NAME") : "feedback";
         String oneWeekAgo = Instant.now().minus(7, ChronoUnit.DAYS).toString();
 
         List<Feedback> feedbacks = dynamoDb.scanPaginator(ScanRequest.builder()
-                        .tableName("feedback")
+                        .tableName(tableName)
                         .filterExpression("createdAt >= :since")
                         .expressionAttributeValues(Map.of(":since", AttributeValue.builder().s(oneWeekAgo).build()))
                         .build())
