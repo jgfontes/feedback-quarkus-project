@@ -70,6 +70,11 @@ public class FeedbackWeeklyReportLambda implements RequestHandler<ScheduledEvent
         body.append("\nQuantidade por urgência:\n");
         perUrgency.forEach((k, v) -> body.append(String.format("  %s: %d\n", k, v)));
 
+        body.append("\n--- Detalhamento dos Feedbacks ---\n\n");
+        feedbacks.stream().sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .forEach(f -> body.append(String.format("• [%s] %s | Nota: %d | Urgência: %s\n",
+                        f.getCreatedAt().substring(0, 10), f.getDescription(), f.getGrade(), f.getUrgency())));
+
         ses.sendEmail(SendEmailRequest.builder()
                 .source(SENDER_EMAIL)
                 .destination(Destination.builder().toAddresses(ADMIN_EMAIL).build())
