@@ -1,0 +1,514 @@
+{
+	"info": {
+		"_postman_id": "feedback-platform-collection",
+		"name": "Feedback Platform - Tech Challenge Fase 4",
+		"description": "Collection para testar a Plataforma de Feedback Serverless (AWS Lambda + API Gateway + DynamoDB + EventBridge + SES).\n\n## Variáveis\n- `base_url`: URL do API Gateway (alterar após deploy)\n- `feedback_id`: preenchido automaticamente após criar um feedback\n- `aws_region`: região AWS (default: us-east-1)\n- `weekly_report_function`: nome da Lambda de relatório semanal\n\n## Fluxo de teste sugerido\n1. Criar feedback com nota alta (NORMAL)\n2. Criar feedback com nota baixa (HIGH → dispara e-mail de alerta)\n3. Listar todos os feedbacks\n4. Buscar feedback por ID\n5. Forçar execução do relatório semanal",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://u7mylr2euc.execute-api.us-east-1.amazonaws.com/Prod",
+			"type": "string"
+		},
+		{
+			"key": "feedback_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "aws_region",
+			"value": "us-east-1",
+			"type": "string"
+		},
+		{
+			"key": "weekly_report_function",
+			"value": "feedback-platform-FeedbackWeeklyReportFunction",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Feedback CRUD",
+			"item": [
+				{
+					"name": "Criar Feedback - Nota Alta (NORMAL)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 201 Created', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Response contém feedback criado', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.id).to.not.be.undefined;",
+									"    pm.expect(json.description).to.eql('Aula excelente sobre serverless');",
+									"    pm.expect(json.grade).to.eql(9);",
+									"    pm.expect(json.urgency).to.eql('NORMAL');",
+									"    pm.expect(json.createdAt).to.not.be.undefined;",
+									"    pm.collectionVariables.set('feedback_id', json.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"Aula excelente sobre serverless\",\n  \"grade\": 9\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/feedback",
+							"host": ["{{base_url}}"],
+							"path": ["feedback"]
+						}
+					}
+				},
+				{
+					"name": "Criar Feedback - Nota Baixa (HIGH → dispara e-mail)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 201 Created', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Urgência HIGH para nota < 6', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.urgency).to.eql('HIGH');",
+									"    pm.expect(json.grade).to.be.below(6);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"Aula muito confusa, não entendi nada\",\n  \"grade\": 2\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/feedback",
+							"host": ["{{base_url}}"],
+							"path": ["feedback"]
+						}
+					}
+				},
+				{
+					"name": "Criar Feedback - Nota Limite (grade=5 → HIGH)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 201 Created', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Nota 5 é HIGH', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.urgency).to.eql('HIGH');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"Poderia melhorar bastante\",\n  \"grade\": 5\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/feedback",
+							"host": ["{{base_url}}"],
+							"path": ["feedback"]
+						}
+					}
+				},
+				{
+					"name": "Criar Feedback - Nota Limite (grade=6 → NORMAL)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 201 Created', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Nota 6 é NORMAL', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.urgency).to.eql('NORMAL');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"Aula razoável, conteúdo ok\",\n  \"grade\": 6\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/feedback",
+							"host": ["{{base_url}}"],
+							"path": ["feedback"]
+						}
+					}
+				},
+				{
+					"name": "Listar Todos os Feedbacks",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200 OK', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response é um array', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/feedback",
+							"host": ["{{base_url}}"],
+							"path": ["feedback"]
+						}
+					}
+				},
+				{
+					"name": "Buscar Feedback por ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200 OK', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contém o feedback', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.id).to.eql(pm.collectionVariables.get('feedback_id'));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/feedback/{{feedback_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["feedback", "{{feedback_id}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Validações",
+			"item": [
+				{
+					"name": "Erro - Description vazia",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 400 Bad Request', function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"\",\n  \"grade\": 5\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/feedback",
+							"host": ["{{base_url}}"],
+							"path": ["feedback"]
+						}
+					}
+				},
+				{
+					"name": "Erro - Description curta (< 3 chars)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 400 Bad Request', function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"ab\",\n  \"grade\": 5\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/feedback",
+							"host": ["{{base_url}}"],
+							"path": ["feedback"]
+						}
+					}
+				},
+				{
+					"name": "Erro - Grade acima de 10",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 400 Bad Request', function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"Teste de validação\",\n  \"grade\": 11\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/feedback",
+							"host": ["{{base_url}}"],
+							"path": ["feedback"]
+						}
+					}
+				},
+				{
+					"name": "Erro - Grade negativa",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 400 Bad Request', function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"Teste de validação\",\n  \"grade\": -1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/feedback",
+							"host": ["{{base_url}}"],
+							"path": ["feedback"]
+						}
+					}
+				},
+				{
+					"name": "Erro - Body vazio",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 400 Bad Request', function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{base_url}}/feedback",
+							"host": ["{{base_url}}"],
+							"path": ["feedback"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Forçar Relatório Semanal (AWS Lambda Invoke)",
+			"item": [
+				{
+					"name": "Invocar Lambda Weekly Report (via AWS API)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200 OK', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Lambda executou com sucesso', function () {",
+									"    // O response payload da Lambda será retornado",
+									"    pm.expect(pm.response.text()).to.include('OK').or.include('NO_DATA');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// NOTA: Esta request requer AWS Signature (Authorization tab → AWS Signature)",
+									"// Configure AccessKey e SecretKey nas variáveis de ambiente do Postman",
+									"// ou use o Postman com AWS IAM Authenticator"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "awsv4",
+							"awsv4": [
+								{
+									"key": "region",
+									"value": "{{aws_region}}",
+									"type": "string"
+								},
+								{
+									"key": "service",
+									"value": "lambda",
+									"type": "string"
+								},
+								{
+									"key": "accessKey",
+									"value": "{{aws_access_key}}",
+									"type": "string"
+								},
+								{
+									"key": "secretKey",
+									"value": "{{aws_secret_key}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"version\": \"0\",\n  \"id\": \"manual-invoke\",\n  \"detail-type\": \"Scheduled Event\",\n  \"source\": \"aws.events\",\n  \"time\": \"2026-06-01T12:00:00Z\",\n  \"region\": \"us-east-1\",\n  \"resources\": [],\n  \"detail\": {}\n}"
+						},
+						"url": {
+							"raw": "https://lambda.{{aws_region}}.amazonaws.com/2015-03-31/functions/{{weekly_report_function}}/invocations",
+							"protocol": "https",
+							"host": ["lambda", "{{aws_region}}", "amazonaws", "com"],
+							"path": ["2015-03-31", "functions", "{{weekly_report_function}}", "invocations"]
+						},
+						"description": "Invoca diretamente a Lambda de relatório semanal via AWS API.\n\n**Configuração necessária:**\n1. Na aba Authorization, selecione 'AWS Signature'\n2. Preencha AccessKey e SecretKey (ou configure nas variáveis `aws_access_key` e `aws_secret_key`)\n3. Region: us-east-1\n4. Service: lambda\n\n**Alternativa via AWS CLI:**\n```bash\naws lambda invoke \\\n  --function-name feedback-platform-FeedbackWeeklyReportFunction-XXXXX \\\n  --payload '{\"version\":\"0\",\"id\":\"manual\",\"detail-type\":\"Scheduled Event\",\"source\":\"aws.events\",\"time\":\"2026-06-01T12:00:00Z\",\"region\":\"us-east-1\",\"resources\":[],\"detail\":{}}' \\\n  --region us-east-1 \\\n  response.json\n```\n\n**NOTA:** O nome exato da função pode ser encontrado com:\n```bash\naws lambda list-functions --region us-east-1 --query \"Functions[?contains(FunctionName,'WeeklyReport')].FunctionName\"\n```"
+					}
+				}
+			]
+		}
+	]
+}
